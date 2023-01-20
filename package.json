@@ -5,8 +5,8 @@
   "author": "<aatanasov@aiopsgroup.com>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc --build tsconfig.json",
-    "start": "tsc --build tsconfig.json && node dist/index.js",
+    "build": "tsc --build tsconfig.json && npx prisma generate",
+    "start": "node dist/index.js",
     "dev": "./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"yarn start\""
   },
   "devDependencies": {
