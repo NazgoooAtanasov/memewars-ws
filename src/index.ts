@@ -38,15 +38,11 @@ io.on("connection", (socket: Socket) => {
       include: { users: true },
     });
 
-    if (!room) {
-      // @TODO: throw if there is no room with that id.
-      return;
-    }
+    if (!room)
+      return socket.emit("join_failed", { reason: "No room with that id." });
 
-    // if (room.currentPlayers >= room.maxPlayers) {
-    //   // @TODO: do not let anyone else in the room.
-    //   return;
-    // }
+    if (room.currentPlayers >= room.maxPlayers)
+      return socket.emit("join_failed", { reason: "Room already full." });
 
     const user = await prisma.user.create({
       data: {
