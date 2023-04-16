@@ -14,6 +14,7 @@ const io = new Server({
   },
 });
 
+// @TODO: handle player disconnect - it should be only event dispatch to all the listeners to update the users list.
 io.on("connection", (socket: Socket) => {
   socket.on("disconnect", async () => {
     await prisma.user.delete({ where: { id: socket.data.userId } });
@@ -65,29 +66,6 @@ io.on("connection", (socket: Socket) => {
     socket.data.userId = user.id;
     io.to(requestParse.data.roomId).emit("player_joined", {
       users: room.users,
-    });
-
-    socket.on("room_player_action", (request) => {
-      const requestSchema = z.object({
-        action: z.enum(["THEME_VOTED", "MEME_READY"]),
-        user: z.string(),
-        roomId: z.string(),
-      });
-      const requestParse = requestSchema.safeParse(request);
-      if (!requestParse.success)
-        return socket.emit("action_failed", {
-          reason: requestParse.error.toString(),
-        });
-
-      switch (requestParse.data.action) {
-        case "MEME_READY":
-          socket.to(requestParse.data.roomId).emit("meme_ready", {});
-          break;
-
-        case "THEME_VOTED":
-          socket.to(requestParse.data.roomId).emit("theme_voted", {});
-          break;
-      }
     });
   });
 });
