@@ -7,6 +7,19 @@ const prisma = new PrismaClient();
 
 config();
 
+enum GAME_STATE {
+  AWAITING_PLAYERS = "awaiting_players",
+  CHOOSE_THEME = "choose_theme",
+}
+
+const PREDEFINED_THEMES = [
+  { id: "1", description: "theme1" },
+  { id: "2", description: "theme2" },
+  { id: "3", description: "theme3" },
+  { id: "4", description: "theme4" },
+  { id: "5", description: "theme5" },
+];
+
 const io = new Server({
   cors: {
     origin: process.env.NEXT_APP,
@@ -34,6 +47,9 @@ io.on("connection", (socket: Socket) => {
     });
 
     io.to(room.id).emit("player_left", room.users);
+    io.to(room.id).emit("room_state_update", {
+      state: GAME_STATE.AWAITING_PLAYERS,
+    });
   });
 
   socket.on("join_request", async (request) => {
@@ -80,6 +96,12 @@ io.on("connection", (socket: Socket) => {
     socket.join(requestParse.data.roomId);
     socket.data.userId = user.id;
     io.to(requestParse.data.roomId).emit("player_joined", room.users);
+
+    if (room.currentPlayers === room.maxPlayers)
+      io.to(requestParse.data.roomId).emit("room_state_update", {
+        state: GAME_STATE.CHOOSE_THEME,
+        themes: PREDEFINED_THEMES,
+      });
   });
 });
 
