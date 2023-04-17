@@ -14,10 +14,24 @@ const io = new Server({
   },
 });
 
-// @TODO: handle player disconnect - it should be only event dispatch to all the listeners to update the users list.
 io.on("connection", (socket: Socket) => {
   socket.on("disconnect", async () => {
-    await prisma.user.delete({ where: { id: socket.data.userId } });
+    const deletedUser = await prisma.user.delete({
+      where: { id: socket.data.userId },
+    });
+
+    const room = await prisma.room.findFirst({
+      where: { id: deletedUser.roomId },
+      include: { users: true },
+    });
+    if (!room) return;
+
+    await prisma.room.update({
+      where: { id: room.id },
+      data: { currentPlayers: room.currentPlayers - 1 },
+    });
+
+    io.to(room.id).emit("player_left", room.users);
   });
 
   socket.on("join_request", async (request) => {
@@ -28,7 +42,7 @@ io.on("connection", (socket: Socket) => {
     const requestParse = requestSchema.safeParse(request);
 
     if (!requestParse.success) {
-      socket.emit("join_failed", { reason: requestParse.error.toString() });
+      socket.emit("join_failed", requestParse.error.toString());
       return socket.disconnect(true);
     }
 
@@ -39,11 +53,10 @@ io.on("connection", (socket: Socket) => {
       include: { users: true },
     });
 
-    if (!room)
-      return socket.emit("join_failed", { reason: "No room with that id." });
+    if (!room) return socket.emit("join_failed", "No room with that id.");
 
     if (room.currentPlayers >= room.maxPlayers)
-      return socket.emit("join_failed", { reason: "Room already full." });
+      return socket.emit("join_failed", "Room already full.");
 
     const user = await prisma.user.create({
       data: {
@@ -64,9 +77,7 @@ io.on("connection", (socket: Socket) => {
 
     socket.join(requestParse.data.roomId);
     socket.data.userId = user.id;
-    io.to(requestParse.data.roomId).emit("player_joined", {
-      users: room.users,
-    });
+    io.to(requestParse.data.roomId).emit("player_joined", room.users);
   });
 });
 
