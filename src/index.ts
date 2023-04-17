@@ -16,6 +16,8 @@ const io = new Server({
 
 io.on("connection", (socket: Socket) => {
   socket.on("disconnect", async () => {
+    if (!socket.data.userId) return; // when the socket was closed manually, we don't persist any user info, and we cannot look for that in the db, thus returning
+
     const deletedUser = await prisma.user.delete({
       where: { id: socket.data.userId },
     });
